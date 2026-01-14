@@ -273,12 +273,27 @@ class CardContentProvider : ContentProvider() {
                 val columns = projection ?: FlashCardsContract.Card.DEFAULT_PROJECTION
                 val query = selection ?: ""
                 val cardIds = col.findCards(query)
-                val rv = MatrixCursor(columns, cardIds.size)
-                for (cardId in cardIds) {
-                    val card = col.getCard(cardId)
-                    addCardToCursor(card, rv, col, columns)
+
+                // Optimization: If only requesting _id (card ID), skip expensive card object fetching
+                val onlyRequestingId = columns.size == 1 && columns[0] == FlashCardsContract.Card._ID
+
+                if (onlyRequestingId) {
+                    // Fast path: Just return card IDs without fetching full card objects
+                    val rv = MatrixCursor(columns, cardIds.size)
+                    for (cardId in cardIds) {
+                        val rb = rv.newRow()
+                        rb.add(cardId)
+                    }
+                    rv
+                } else {
+                    // Full path: Fetch full card data (for compatibility with existing code)
+                    val rv = MatrixCursor(columns, cardIds.size)
+                    for (cardId in cardIds) {
+                        val card = col.getCard(cardId)
+                        addCardToCursor(card, rv, col, columns)
+                    }
+                    rv
                 }
-                rv
             }
             CARDS_ID -> {
                 // Direct access card with specific ID
