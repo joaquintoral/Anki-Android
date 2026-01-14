@@ -98,6 +98,8 @@ class CardContentProvider : ContentProvider() {
         private const val NOTES_ID_CARDS = 1003
         private const val NOTES_ID_CARDS_ORD = 1004
         private const val NOTES_V2 = 1005
+        private const val CARDS = 1100
+        private const val CARDS_ID = 1101
         private const val NOTE_TYPES = 2000
         private const val NOTE_TYPES_ID = 2001
         private const val NOTE_TYPES_ID_EMPTY_CARDS = 2002
@@ -149,6 +151,8 @@ class CardContentProvider : ContentProvider() {
             addUri("notes/#", NOTES_ID)
             addUri("notes/#/cards", NOTES_ID_CARDS)
             addUri("notes/#/cards/#", NOTES_ID_CARDS_ORD)
+            addUri("cards", CARDS)
+            addUri("cards/#", CARDS_ID)
             addUri("models", NOTE_TYPES)
             addUri("models/*", NOTE_TYPES_ID) // the note type ID can also be "current"
             addUri("models/*/empty_cards", NOTE_TYPES_ID_EMPTY_CARDS)
@@ -183,8 +187,8 @@ class CardContentProvider : ContentProvider() {
         return when (sUriMatcher.match(uri)) {
             NOTES_V2, NOTES -> FlashCardsContract.Note.CONTENT_TYPE
             NOTES_ID -> FlashCardsContract.Note.CONTENT_ITEM_TYPE
-            NOTES_ID_CARDS, NOTE_TYPES_ID_EMPTY_CARDS -> FlashCardsContract.Card.CONTENT_TYPE
-            NOTES_ID_CARDS_ORD -> FlashCardsContract.Card.CONTENT_ITEM_TYPE
+            NOTES_ID_CARDS, NOTE_TYPES_ID_EMPTY_CARDS, CARDS -> FlashCardsContract.Card.CONTENT_TYPE
+            NOTES_ID_CARDS_ORD, CARDS_ID -> FlashCardsContract.Card.CONTENT_ITEM_TYPE
             NOTE_TYPES -> FlashCardsContract.Model.CONTENT_TYPE
             NOTE_TYPES_ID -> FlashCardsContract.Model.CONTENT_ITEM_TYPE
             NOTE_TYPES_ID_TEMPLATES -> FlashCardsContract.CardTemplate.CONTENT_TYPE
@@ -262,6 +266,27 @@ class CardContentProvider : ContentProvider() {
                 val columns = projection ?: FlashCardsContract.Card.DEFAULT_PROJECTION
                 val rv = MatrixCursor(columns, 1)
                 addCardToCursor(currentCard, rv, col, columns)
+                rv
+            }
+            CARDS -> {
+                // Search for cards using the libanki browser syntax
+                val columns = projection ?: FlashCardsContract.Card.DEFAULT_PROJECTION
+                val query = selection ?: ""
+                val cardIds = col.findCards(query)
+                val rv = MatrixCursor(columns, cardIds.size)
+                for (cardId in cardIds) {
+                    val card = col.getCard(cardId)
+                    addCardToCursor(card, rv, col, columns)
+                }
+                rv
+            }
+            CARDS_ID -> {
+                // Direct access card with specific ID
+                val cardId = uri.pathSegments[1].toLong()
+                val columns = projection ?: FlashCardsContract.Card.DEFAULT_PROJECTION
+                val rv = MatrixCursor(columns, 1)
+                val card = col.getCard(cardId)
+                addCardToCursor(card, rv, col, columns)
                 rv
             }
             NOTE_TYPES -> {
@@ -1116,6 +1141,7 @@ class CardContentProvider : ContentProvider() {
         val rb = rv.newRow()
         for (column in columns) {
             when (column) {
+                FlashCardsContract.Card._ID -> rb.add(currentCard.id)
                 FlashCardsContract.Card.NOTE_ID -> rb.add(currentCard.nid)
                 FlashCardsContract.Card.CARD_ORD -> rb.add(currentCard.ord)
                 FlashCardsContract.Card.CARD_NAME -> rb.add(cardName)
@@ -1125,6 +1151,10 @@ class CardContentProvider : ContentProvider() {
                 FlashCardsContract.Card.QUESTION_SIMPLE -> rb.add(currentCard.renderOutput(col).questionText)
                 FlashCardsContract.Card.ANSWER_SIMPLE -> rb.add(currentCard.renderOutput(col, false).answerText)
                 FlashCardsContract.Card.ANSWER_PURE -> rb.add(currentCard.pureAnswer(col))
+                FlashCardsContract.Card.DUE -> rb.add(currentCard.due.toLong())
+                FlashCardsContract.Card.INTERVAL -> rb.add(currentCard.ivl.toLong())
+                FlashCardsContract.Card.EASE_FACTOR -> rb.add(currentCard.factor / 1000.0f)
+                FlashCardsContract.Card.REVIEWS -> rb.add(currentCard.reps)
                 else -> throw UnsupportedOperationException("Queue \"$column\" is unknown")
             }
         }

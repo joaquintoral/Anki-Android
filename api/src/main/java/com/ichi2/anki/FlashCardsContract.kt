@@ -576,6 +576,19 @@ public object FlashCardsContract {
      */
     public object Card {
         /**
+         * The content:// style URI for cards. If the it is appended by the card's ID, this
+         * card can be directly accessed.
+         */
+        @JvmField // required for Java API
+        public val CONTENT_URI: Uri = Uri.withAppendedPath(AUTHORITY_URI, "cards")
+
+        /**
+         * This is the ID of the card itself (i.e. Card._ID).
+         */
+        @Suppress("ConstPropertyName", "ktlint:standard:backing-property-naming")
+        public const val _ID: String = "_id"
+
+        /**
          * This is the ID of the note that this card belongs to (i.e. [Note._ID]).
          */
         public const val NOTE_ID: String = "note_id"
@@ -622,9 +635,30 @@ public object FlashCardsContract {
          */
         public const val ANSWER_PURE: String = "answer_pure"
 
+        /**
+         * The due date/time for the card (scheduling information)
+         */
+        public const val DUE: String = "due"
+
+        /**
+         * The interval in days for the card (scheduling information)
+         */
+        public const val INTERVAL: String = "interval"
+
+        /**
+         * The ease factor for the card (scheduling information)
+         */
+        public const val EASE_FACTOR: String = "ease_factor"
+
+        /**
+         * The number of reviews for the card (scheduling information)
+         */
+        public const val REVIEWS: String = "reviews"
+
         @JvmField // required for Java API
         public val DEFAULT_PROJECTION: Array<String> =
             arrayOf(
+                _ID,
                 NOTE_ID,
                 CARD_ORD,
                 CARD_NAME,
